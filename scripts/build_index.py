@@ -33,6 +33,7 @@ from config import (
     CHUNK_SIZE_TOKENS,
     CHUNKING_STRATEGY,
     CHUNKS_PATH,
+    CORPUS_CENTROID_PATH,
     FAISS_INDEX_PATH,
     FAISS_META_PATH,
     INDEX_DIR,
@@ -141,6 +142,20 @@ def main() -> None:
     logger.info("  FAISS index: %d vectors at %s", faiss_index.ntotal, FAISS_INDEX_PATH)
     logger.info("  BM25 index: %s", BM25_INDEX_PATH)
     logger.info("  Chunk count: %d at %s", len(chunks), CHUNKS_PATH)
+
+    # ── Step 5: Compute corpus centroid (for off-topic guard) ──────────────────
+    logger.info("Step 5/5: Computing corpus centroid for off-topic guardrail…")
+    try:
+        import numpy as np
+        # Reconstruct all vectors from FAISS index
+        n = faiss_index.ntotal
+        all_vectors = np.zeros((n, faiss_index.d), dtype="float32")
+        faiss_index.reconstruct_n(0, n, all_vectors)
+        centroid = all_vectors.mean(axis=0)
+        np.save(str(CORPUS_CENTROID_PATH), centroid)
+        logger.info("  Corpus centroid saved → %s (dim=%d)", CORPUS_CENTROID_PATH, len(centroid))
+    except Exception as exc:
+        logger.warning("  Could not compute centroid: %s — off-topic guard will be disabled.", exc)
 
 
 if __name__ == "__main__":

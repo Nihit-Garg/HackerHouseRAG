@@ -50,7 +50,8 @@ def _load_pipeline() -> Any:
         bm25_index = load_bm25_index()
         emb_model = get_embedding_model()
         retriever = HybridRetriever(faiss_index, bm25_index, chunks, emb_model)
-        _pipeline = RAGPipeline(retriever)
+        # Day 2: pass embedder so off-topic guard can embed queries
+        _pipeline = RAGPipeline(retriever, emb_model)
         logger.info("RAGPipeline loaded successfully.")
     except FileNotFoundError as exc:
         logger.error("Index files not found: %s", exc)

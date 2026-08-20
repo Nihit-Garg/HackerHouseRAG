@@ -83,7 +83,7 @@ def _load_pipeline(top_k: int | None):
 
     emb_model = get_embedding_model()
     retriever = HybridRetriever(faiss_index, bm25_index, chunks, emb_model)
-    return RAGPipeline(retriever, top_k=k)
+    return RAGPipeline(retriever, emb_model, top_k=k)
 
 
 def _print_result(result: dict, pretty: bool) -> None:
@@ -95,6 +95,9 @@ def _print_summary(result: dict) -> None:
     """Print a human-readable summary before the JSON blob."""
     print("\n" + "=" * 60)
     print(f"📝 Query:   {result.get('transcribed_text', result.get('query', ''))}")
+    guard = result.get("guardrail_triggered")
+    if guard:
+        print(f"🛡  Guardrail: {guard.upper()} — {result.get('guardrail_detail', {}).get('reason', '')}")
     print(f"💬 Answer:  {result.get('answer', '')}")
     timings = result.get("stage_timings", {})
     print(

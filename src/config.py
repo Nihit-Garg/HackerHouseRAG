@@ -23,6 +23,7 @@ FAISS_INDEX_PATH: Path = INDEX_DIR / "faiss.index"
 FAISS_META_PATH: Path = INDEX_DIR / "faiss_meta.json"
 BM25_INDEX_PATH: Path = INDEX_DIR / "bm25.pkl"
 CHUNKS_PATH: Path = PROCESSED_DIR / "chunks.json"
+CORPUS_CENTROID_PATH: Path = INDEX_DIR / "corpus_centroid.npy"  # mean of all corpus embeddings
 
 # ── Data ─────────────────────────────────────────────────────────────────────
 # ai4bharat/MSMARCO-XI — multilingual MSMARCO dataset.
@@ -75,3 +76,19 @@ STT_RETRY_BASE_DELAY_S: float = float(os.getenv("STT_RETRY_BASE_DELAY_S", "1.0")
 API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
 API_PORT: int = int(os.getenv("API_PORT", "8000"))
 API_RELOAD: bool = os.getenv("API_RELOAD", "true").lower() == "true"
+
+# ── Day 2: Guardrails ──────────────────────────────────────────────────────────
+# Guard 1: Unsafe input — keyword blocklist (inline in guardrails.py)
+# Guard 2: Off-topic — cosine sim between query embedding and corpus centroid
+OFF_TOPIC_THRESHOLD: float = float(os.getenv("OFF_TOPIC_THRESHOLD", "0.15"))
+# Guard 3: Retrieval threshold — skip LLM if best RRF score is too low
+RETRIEVAL_SCORE_THRESHOLD: float = float(os.getenv("RETRIEVAL_SCORE_THRESHOLD", "0.02"))
+# Guard 4: Grounding — minimum confidence for LLM self-grounding score
+GROUNDING_CONFIDENCE_THRESHOLD: float = float(os.getenv("GROUNDING_CONFIDENCE_THRESHOLD", "0.5"))
+
+# ── Day 2: Harness retries ─────────────────────────────────────────────────────
+GENERATION_MAX_RETRIES: int = int(os.getenv("GENERATION_MAX_RETRIES", "2"))
+GENERATION_RETRY_BASE_DELAY_S: float = float(os.getenv("GENERATION_RETRY_BASE_DELAY_S", "1.0"))
+
+# ── Day 2: Benchmark ──────────────────────────────────────────────────────────
+BENCHMARK_N_QUERIES: int = int(os.getenv("BENCHMARK_N_QUERIES", "50"))
