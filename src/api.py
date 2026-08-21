@@ -102,6 +102,8 @@ class PipelineResponse(BaseModel):
     answer: str
     stage_timings: dict[str, float]
     errors: list[str]
+    guardrail_triggered: str | None = None
+    guardrail_detail: dict[str, Any] = {}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -127,10 +129,22 @@ async def health() -> dict[str, str]:
 @app.get("/index/status", tags=["System"])
 async def index_status() -> dict[str, Any]:
     """Check whether FAISS and BM25 index files exist on disk."""
+    faiss_exists = FAISS_INDEX_PATH.exists()
+
+    total_chunks = None
+    if faiss_exists:
+        try:
+            import faiss
+
+            total_chunks = faiss.read_index(str(FAISS_INDEX_PATH)).ntotal
+        except Exception as exc:
+            logger.warning("Could not read FAISS index for status check: %s", exc)
+
     return {
-        "faiss_index_exists": FAISS_INDEX_PATH.exists(),
+        "faiss_index_exists": faiss_exists,
         "bm25_index_exists": BM25_INDEX_PATH.exists(),
         "pipeline_loaded": _pipeline is not None,
+        "total_chunks": total_chunks,
     }
 
 
