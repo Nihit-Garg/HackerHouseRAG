@@ -1,6 +1,6 @@
 # HackerHouseRAG — Voice-Enabled RAG Pipeline
 
-A production-quality, voice-enabled Retrieval-Augmented Generation (RAG) system built for a hackathon. Ask questions by voice or text and receive answers grounded strictly in the retrieved corpus — no hallucination.
+A production-quality, voice-enabled Retrieval-Augmented Generation (RAG) system built for a hackathon. Ask questions by voice or text and receive answers grounded strictly in the retrieved corpus — no hallucination. Includes a FastAPI backend and a React frontend (`frontend/`) for asking questions and reviewing answers in the browser.
 
 ---
 
@@ -23,6 +23,8 @@ Audio or text input flows through a LangGraph state graph with three sequential 
 | LLM | Ollama `qwen2.5:7b` | Strong instruction following; fits 8GB VRAM |
 | STT | Sarvam AI batch API | Indian-language-aware, English supported |
 | Chunking | tiktoken + nltk | Real token-based chunking, not `.split()` |
+| Frontend | React 19 + Vite | Fast dev server, no server-side rendering needed for a single-user tool |
+| Frontend routing | react-router-dom | Four static routes: About, Ask, History, Status |
 
 ---
 
@@ -53,6 +55,14 @@ HackerHouseRAG/
 ├── scripts/
 │   ├── build_index.py    # One-time index build
 │   └── run_query.py      # CLI query runner
+├── frontend/              # React + Vite web UI (see Frontend section below)
+│   ├── src/
+│   │   ├── pages/         # AboutPage, AskPage, HistoryPage, StatusPage
+│   │   ├── components/    # Sidebar, AnswerCard, MessageBubble, etc.
+│   │   ├── hooks/         # useHistory, useSystemStatus
+│   │   ├── utils/         # formatting + guardrail label helpers
+│   │   └── api.js         # fetch wrapper for the FastAPI backend
+│   └── README.md
 ├── .env.example
 ├── pytest.ini
 ├── requirements.txt
@@ -118,7 +128,18 @@ uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 
 Swagger UI: http://localhost:8000/docs
 
-### 6. Run a Query
+### 6. Start the Frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env   # points VITE_API_BASE_URL at the backend, defaults to localhost:8000
+npm run dev
+```
+
+Open http://localhost:5173. The backend must already be running (step 5) — see the [Frontend](#frontend) section below for what each page does.
+
+### 7. Run a Query
 
 **CLI (text):**
 ```bash
@@ -198,6 +219,21 @@ python scripts/build_index.py --strategy sentence
   "errors": []
 }
 ```
+
+---
+
+## Frontend
+
+A React + Vite single-page app in `frontend/` (own [README](frontend/README.md)) that talks to the FastAPI backend over HTTP — nothing is server-rendered, and no data is persisted server-side. Four pages, reachable from the sidebar:
+
+| Page | Route | What it does |
+|------|-------|--------------|
+| **About** | `/about` | Plain-language explanation of what the assistant does and doesn't do |
+| **Ask** | `/ask` | Text box, mic recording, or audio file upload → sends to `/query/text` or `/query/audio`, renders the answer with its sources and a verified/refused status |
+| **History** | `/history` | Every past question and answer from this browser, read from `localStorage` (the backend keeps no history, so neither does this page beyond the device it ran on) |
+| **Status** | `/status` | Live `/health` and `/index/status` checks, knowledge-base size, and the timing breakdown (STT / retrieval / generation) of the last query |
+
+Answers are shown differently depending on outcome — a normal grounded answer gets a "Verified Response" badge with the model's self-reported confidence; anything caught by one of the four guardrails (unsafe input, off-topic, weak retrieval, or ungrounded generation) gets a distinct refusal card instead, using the `guardrail_triggered` / `guardrail_detail` fields on the `/query/*` response.
 
 ---
 
