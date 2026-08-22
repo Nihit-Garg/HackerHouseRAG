@@ -249,9 +249,9 @@ Tests do **not** require a running Ollama server or Sarvam API key — STT and L
 
 ## Known Limitations
 
-1. **FAISS flat index**: Exact search is correct at 5–10k chunks but will not scale beyond ~100k without switching to an IVF/HNSW index (controlled by `FAISS_INDEX_TYPE` config).
-2. **Sarvam STT endpoint**: API field names are flagged with `# TODO` comments in `stt.py` — verify against current Sarvam docs before production use.
-3. **English-only**: `LANGUAGE_FILTER=en` is set by default. Set `LANGUAGE_FILTER=` (empty) in `.env` to load all languages.
-4. **Ollama cold start**: First query after server start may be slow (~5s) as qwen2.5:7b loads into VRAM.
-5. **No streaming**: Generation is synchronous (batch). Streaming via Ollama's SSE API can be added to the FastAPI endpoint for Day-2.
-6. **Single-node**: No distributed retrieval or load balancing — intended for single-machine hackathon use.
+1. *FAISS flat index*: Exact search is correct at 5–10k chunks but will not scale beyond ~100k without switching to an IVF/HNSW index (controlled by `FAISS_INDEX_TYPE` config).
+2. *Sarvam STT endpoint*: API field names are flagged with `# TODO` comments in `stt.py` — verify against current Sarvam docs before production use.
+3. *English-only*: `LANGUAGE_FILTER=en` is set by default. Set `LANGUAGE_FILTER=` (empty) in `.env` to load all languages.
+4. *Ollama cold start*: First query after server start may be slow (~5s) as qwen2.5:7b loads into VRAM.
+5. **No streaming*: Generation is synchronous (batch). Streaming via Ollama's SSE API can be added to the FastAPI endpoint for Day-2.
+6. *Single-node*: No distributed retrieval or load balancing — intended for single-machine hackathon use.
