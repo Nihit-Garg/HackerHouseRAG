@@ -229,10 +229,12 @@ def generation_stage(
         return _fail("generation", "No context chunks provided — cannot generate grounded answer.", 0.0)
 
     # ── Generate with retry ───────────────────────────────────────────────────
+    # generate_answer has its own strict grounding system prompt.
+    # The grounding guard (guardrails.check_grounding) handles post-generation verification.
     result, retries, err = _retry_loop(
         generate_answer,
         (query, chunks),
-        {"system_prompt": _GROUNDED_SYSTEM_PROMPT},
+        {},
         max_retries=max_retries,
         base_delay=base_delay,
         stage="generation",

@@ -68,7 +68,7 @@ SARVAM_STT_URL: str = os.getenv(
     "https://api.sarvam.ai/speech-to-text",
 )
 SARVAM_LANGUAGE_CODE: str = os.getenv("SARVAM_LANGUAGE_CODE", "en-IN")
-SARVAM_MODEL: str = os.getenv("SARVAM_MODEL", "saarika:v2")
+SARVAM_MODEL: str = os.getenv("SARVAM_MODEL", "saarika:v2.5")
 STT_MAX_RETRIES: int = int(os.getenv("STT_MAX_RETRIES", "2"))
 STT_RETRY_BASE_DELAY_S: float = float(os.getenv("STT_RETRY_BASE_DELAY_S", "1.0"))
 

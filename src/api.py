@@ -13,6 +13,8 @@ Run with:
 from __future__ import annotations
 
 import logging
+import shutil
+import subprocess
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -106,6 +108,49 @@ class PipelineResponse(BaseModel):
     guardrail_detail: dict[str, Any] = {}
 
 
+# ── Audio helpers ─────────────────────────────────────────────────────────────
+
+# Formats Sarvam reliably accepts as wav-encoded input
+_NEEDS_CONVERSION = {".webm", ".ogg"}
+
+
+def _convert_to_wav(src: Path) -> Path | None:
+    """
+    Convert audio to 16kHz mono WAV using ffmpeg.
+    Returns a new temp Path on success, or None if ffmpeg is unavailable.
+    The caller is responsible for deleting the returned file.
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return None
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    tmp.close()
+    out_path = Path(tmp.name)
+
+    cmd = [
+        ffmpeg,
+        "-y",           # overwrite without asking
+        "-i", str(src), # input file
+        "-ar", "16000", # 16kHz — Sarvam STT preferred sample rate
+        "-ac", "1",     # mono
+        "-f", "wav",    # force WAV output
+        str(out_path),
+    ]
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, timeout=30)
+        logger.info("Converted %s → %s (wav/16kHz/mono)", src.name, out_path.name)
+        return out_path
+    except subprocess.CalledProcessError as exc:
+        logger.error("ffmpeg conversion failed: %s", exc.stderr.decode(errors="ignore"))
+        out_path.unlink(missing_ok=True)
+        return None
+    except Exception as exc:
+        logger.error("ffmpeg error: %s", exc)
+        out_path.unlink(missing_ok=True)
+        return None
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _get_pipeline() -> Any:
@@ -174,11 +219,12 @@ async def query_audio(file: UploadFile = File(...)) -> PipelineResponse:
     Submit an audio file for transcription and RAG answering.
 
     Accepts: wav, mp3, ogg, flac, m4a, webm
+    webm/ogg are automatically converted to 16kHz mono WAV via ffmpeg.
     """
     pipeline = _get_pipeline()
 
     allowed = {".wav", ".mp3", ".ogg", ".flac", ".m4a", ".webm"}
-    suffix = Path(file.filename or "").suffix.lower()
+    suffix = Path(file.filename or "audio.webm").suffix.lower() or ".webm"
     if suffix not in allowed:
         raise HTTPException(
             status_code=400,
@@ -189,12 +235,27 @@ async def query_audio(file: UploadFile = File(...)) -> PipelineResponse:
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         content = await file.read()
         tmp.write(content)
-        tmp_path = tmp.name
+        tmp_path = Path(tmp.name)
 
+    converted_path: Path | None = None
     try:
-        result = pipeline.answer(audio_path=tmp_path)
+        audio_path = tmp_path
+
+        # Convert webm/ogg → wav so Sarvam STT gets a clean PCM wav
+        if suffix in _NEEDS_CONVERSION:
+            converted_path = _convert_to_wav(tmp_path)
+            if converted_path:
+                audio_path = converted_path
+            else:
+                logger.warning(
+                    "ffmpeg not found — sending %s directly to Sarvam (may fail).", suffix
+                )
+
+        result = pipeline.answer(audio_path=str(audio_path))
     finally:
-        Path(tmp_path).unlink(missing_ok=True)
+        tmp_path.unlink(missing_ok=True)
+        if converted_path:
+            converted_path.unlink(missing_ok=True)
 
     return PipelineResponse(**result)
 

@@ -29,6 +29,15 @@ logger = logging.getLogger(__name__)
 # Supported audio formats (Sarvam accepts wav, mp3, ogg, flac, m4a)
 _SUPPORTED_EXTENSIONS = {".wav", ".mp3", ".ogg", ".flac", ".m4a", ".webm"}
 
+_MIME_TYPES = {
+    ".wav": "audio/wav",
+    ".mp3": "audio/mpeg",
+    ".ogg": "audio/ogg",
+    ".flac": "audio/flac",
+    ".m4a": "audio/mp4",
+    ".webm": "audio/webm",
+}
+
 
 class STTError(Exception):
     """Raised when STT fails after all retries."""
@@ -67,8 +76,8 @@ def _call_sarvam_api(audio_path: Path) -> str:
     headers = _build_headers()
 
     with open(audio_path, "rb") as audio_file:
-        # TODO: verify field names ('file', 'model', 'language_code') against docs
-        files = {"file": (audio_path.name, audio_file, "audio/wav")}
+        mime_type = _MIME_TYPES.get(audio_path.suffix.lower(), "audio/wav")
+        files = {"file": (audio_path.name, audio_file, mime_type)}
         data = {
             "model": SARVAM_MODEL,
             "language_code": SARVAM_LANGUAGE_CODE,
